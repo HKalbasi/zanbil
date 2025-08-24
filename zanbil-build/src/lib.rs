@@ -2,6 +2,8 @@ use std::fmt::Write;
 
 use build_rs::input::out_dir;
 use fs_extra::dir::CopyOptions;
+use serde::Deserialize;
+use toml::Value;
 
 fn dep_includes() -> Vec<(String, String)> {
     let mut includes = Vec::new();
@@ -15,6 +17,11 @@ fn dep_includes() -> Vec<(String, String)> {
     }
 
     includes
+}
+
+#[derive(Default, Deserialize)]
+struct ZanbilConf {
+    cpp: Option<u8>,
 }
 
 pub fn build() {
@@ -32,10 +39,33 @@ pub fn build() {
 
     std::fs::write(out_dir().join("generated_lib.rs"), main_rs_file).unwrap();
 
+    let cargo_toml =
+        std::fs::read_to_string(build_rs::input::cargo_manifest_dir().join("Cargo.toml")).unwrap();
+
+    let value: Value = toml::from_str(&cargo_toml).unwrap();
+
+    let zanbil_conf: ZanbilConf = value
+        .get("package")
+        .and_then(|x| x.get("metadata")?.get("zanbil")?.clone().try_into().ok())
+        .unwrap_or_default();
+
+    let cpp = zanbil_conf.cpp;
+
+    if let Some(cpp) = cpp {
+        cc.cpp(true);
+        cc.std(&format!("c++{cpp}"));
+    }
+
+    let c_extension = if cpp.is_some() {
+        Some("cpp")
+    } else {
+        Some("c")
+    };
+
     for entry in walkdir::WalkDir::new("src") {
         let entry = entry.unwrap();
         let path = entry.path().to_path_buf();
-        if path.extension().and_then(|x| x.to_str()) == Some("c") {
+        if path.extension().and_then(|x| x.to_str()) == c_extension {
             build_rs::output::rerun_if_changed(&path);
             cc.file(&path);
         }

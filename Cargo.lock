@@ -547,5 +547,7 @@ dependencies = [
  "build-rs",
  "cc",
  "fs_extra",
+ "serde",
+ "toml",
  "walkdir",
 ]

@@ -10,6 +10,9 @@ enum Command {
         name: String,
         #[arg(long)]
         lib: bool,
+        /// Enable C++ mode, optionally specify standard (e.g. --cpp=23)
+        #[arg(long, num_args(0..=1), default_missing_value = "17")]
+        cpp: Option<u8>,
     },
 }
 
@@ -50,7 +53,7 @@ fn main() -> anyhow::Result<()> {
         std::process::exit(output.status.code().unwrap_or(1));
     };
     match command {
-        Command::Init { name, lib } => {
+        Command::Init { name, lib, cpp } => {
             if lib {
                 spawn_cargo(["init", &name, "--lib"]);
             } else {
@@ -59,14 +62,25 @@ fn main() -> anyhow::Result<()> {
             std::env::set_current_dir(&name)?;
             let mut toml = std::fs::read_to_string("Cargo.toml")?.parse::<DocumentMut>()?;
             toml["package"]["links"] = toml_edit::value(&name);
+            if let Some(cpp) = cpp {
+                toml["package"]["metadata"]["zanbil"]["cpp"] = toml_edit::value(cpp as i64);
+            }
             std::fs::write("Cargo.toml", toml.to_string())?;
             if lib {
                 std::fs::write("src/lib.rs", include_str!("../templates/lib.rs"))?;
-                std::fs::write("src/lib.c", include_str!("../templates/lib.c"))?;
+                if cpp.is_some() {
+                    std::fs::write("src/lib.cpp", include_str!("../templates/lib.c"))?;
+                } else {
+                    std::fs::write("src/lib.c", include_str!("../templates/lib.c"))?;
+                }
                 std::fs::write("src/lib.h", include_str!("../templates/lib.h"))?;
             } else {
+                if cpp.is_some() {
+                    std::fs::write("src/main.cpp", include_str!("../templates/main.cpp"))?;
+                } else {
+                    std::fs::write("src/main.c", include_str!("../templates/main.c"))?;
+                }
                 std::fs::write("src/main.rs", include_str!("../templates/main.rs"))?;
-                std::fs::write("src/main.c", include_str!("../templates/main.c"))?;
             }
             std::fs::write("build.rs", include_str!("../templates/build.rs"))?;
             let cargo_add_args = if let Some(p) = config.zanbil_build_local_path {
