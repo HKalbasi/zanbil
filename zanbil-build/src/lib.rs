@@ -32,13 +32,13 @@ pub fn build() {
 
     std::fs::write(out_dir().join("generated_lib.rs"), main_rs_file).unwrap();
 
-    if std::fs::exists("src/main.c").unwrap() {
-        build_rs::output::rerun_if_changed("src/main.c");
-        cc.file("src/main.c");
-    }
-    if std::fs::exists("src/lib.c").unwrap() {
-        build_rs::output::rerun_if_changed("src/lib.c");
-        cc.file("src/lib.c");
+    for entry in walkdir::WalkDir::new("src") {
+        let entry = entry.unwrap();
+        let path = entry.path().to_path_buf();
+        if path.extension().and_then(|x| x.to_str()) == Some("c") {
+            build_rs::output::rerun_if_changed(&path);
+            cc.file(&path);
+        }
     }
 
     let my_include = out_dir().join("include").join(&my_name);

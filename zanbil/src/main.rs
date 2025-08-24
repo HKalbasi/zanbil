@@ -1,6 +1,7 @@
 use std::{iter::Iterator, process::Stdio};
 
 use clap::Parser;
+use serde::Deserialize;
 use toml_edit::DocumentMut;
 
 #[derive(Debug, Parser)]
@@ -22,8 +23,26 @@ struct Cli {
     forward_args: Vec<String>,
 }
 
+#[derive(Debug, Default, Deserialize)]
+struct Config {
+    zanbil_build_local_path: Option<String>,
+}
+
+impl Config {
+    fn read() -> Self {
+        let Some(dirs) = directories::ProjectDirs::from("zanbil", "zanbil", "zanbil") else {
+            return Self::default();
+        };
+        let Ok(file) = std::fs::read_to_string(dirs.config_dir().join("config.toml")) else {
+            return Self::default();
+        };
+        toml::from_str(&file).unwrap()
+    }
+}
+
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
+    let config = Config::read();
     let Some(command) = cli.command else {
         // Forward to cargo
         let output = spawn_cargo(&cli.forward_args);
@@ -50,13 +69,18 @@ fn main() -> anyhow::Result<()> {
                 std::fs::write("src/main.c", include_str!("../templates/main.c"))?;
             }
             std::fs::write("build.rs", include_str!("../templates/build.rs"))?;
-            spawn_cargo([
-                "add",
-                "--build",
-                "--git",
-                "https://github.com/HKalbasi/zanbil",
-                "zanbil-build",
-            ]);
+            let cargo_add_args = if let Some(p) = config.zanbil_build_local_path {
+                &["add", "--build", "--path", p.leak()] as &[&str]
+            } else {
+                &[
+                    "add",
+                    "--build",
+                    "--git",
+                    "https://github.com/HKalbasi/zanbil",
+                    "zanbil-build",
+                ]
+            };
+            spawn_cargo(cargo_add_args);
         }
     }
     Ok(())
