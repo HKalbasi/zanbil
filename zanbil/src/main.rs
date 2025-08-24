@@ -53,8 +53,9 @@ fn main() -> anyhow::Result<()> {
             spawn_cargo([
                 "add",
                 "--build",
-                "--path",
-                "/root/cargo-as-c-build/cargo-as-c-builder",
+                "--git",
+                "https://github.com/HKalbasi/zanbil",
+                "zanbil-build",
             ]);
         }
     }
