@@ -32,7 +32,6 @@ pub fn build() {
     let mut main_rs_file = String::new();
 
     for (dep, include) in dep_includes() {
-        build_rs::output::warning(&format!("{dep} {include}"));
         writeln!(main_rs_file, "extern crate {};", dep.to_lowercase()).unwrap();
         cc.include(include);
     }
@@ -51,9 +50,23 @@ pub fn build() {
 
     let cpp = zanbil_conf.cpp;
 
+    build_rs::output::rerun_if_env_changed("ZANBIL_CXX");
+    build_rs::output::rerun_if_env_changed("ZANBIL_CC");
+
     if let Some(cpp) = cpp {
+        if let Ok(cxx) = std::env::var("ZANBIL_CXX") {
+            cc.compiler(cxx);
+        } else {
+            cc.compiler("zanbil_c++");
+        }
         cc.cpp(true);
         cc.std(&format!("c++{cpp}"));
+    } else {
+        if let Ok(cxx) = std::env::var("ZANBIL_CC") {
+            cc.compiler(cxx);
+        } else {
+            cc.compiler("zanbil_cc");
+        }
     }
 
     let c_extension = if cpp.is_some() {

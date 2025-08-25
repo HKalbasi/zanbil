@@ -551,3 +551,10 @@ dependencies = [
  "toml",
  "walkdir",
 ]
+
+[[package]]
+name = "zanbil_cc"
+version = "0.1.0"
+dependencies = [
+ "zanbil-build",
+]

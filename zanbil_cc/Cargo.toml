@@ -1,0 +1,11 @@
+[package]
+name = "zanbil_cc"
+version = "0.1.0"
+edition = "2024"
+links = "zanbil_cc"
+metadata = { zanbil = { cpp = 17 } }
+
+[dependencies]
+
+[build-dependencies]
+zanbil-build = { version = "0.1.0", path = "../zanbil-build" }
