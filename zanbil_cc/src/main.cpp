@@ -27,13 +27,19 @@ std::string rust_to_zig(const std::string &rust_target) {
   std::string os = parts[2];
   std::string abi = parts.size() > 3 ? parts[3] : "";
 
+  // Map Rust arch to Zig arch
+  std::unordered_map<std::string, std::string> arch_map = {
+      {"arm64", "aarch64"}};
+
+  if (arch_map.count(arch)) {
+    arch = arch_map[arch];
+  }
+
   // Map Rust OS/vendor to Zig OS
   std::unordered_map<std::string, std::string> os_map = {
-      {"darwin", "macos"},
-      {"windows", "windows"},
-      {"linux", "linux"},
-      {"none", "freestanding"},
-      {"unknown", "freestanding"}};
+      {"macosx", "macos"},      {"darwin", "macos"},
+      {"windows", "windows"},   {"linux", "linux"},
+      {"none", "freestanding"}, {"unknown", "freestanding"}};
 
   if (os_map.count(os)) {
     os = os_map[os];
@@ -71,6 +77,11 @@ int main(int argc, char *argv[]) {
 
   for (int i = 1; i < argc; i++) {
     std::string current = argv[i];
+
+    // Ignore some flags for windows-gnu cross compile
+    if (current == "-lmsvcrt" || current == "-l:libpthread.a") {
+      continue;
+    }
 
     if (current == "--target" && i + 1 < argc) {
       // Convert Rust target to Zig target
